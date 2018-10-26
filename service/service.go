@@ -25,9 +25,11 @@ import (
 	"github.com/vulcand/vulcand/engine/etcdng"
 	etcdv2ng "github.com/vulcand/vulcand/engine/etcdng/v2"
 	etcdv3ng "github.com/vulcand/vulcand/engine/etcdng/v3"
+	"github.com/vulcand/vulcand/engine/memng"
 	"github.com/vulcand/vulcand/graceful"
 	"github.com/vulcand/vulcand/plugin"
 	"github.com/vulcand/vulcand/plugin/cacheprovider"
+	"github.com/vulcand/vulcand/plugin/registry"
 	"github.com/vulcand/vulcand/proxy"
 	"github.com/vulcand/vulcand/proxy/builder"
 	"github.com/vulcand/vulcand/secret"
@@ -369,18 +371,25 @@ func (s *Service) newEngine() error {
 		Box:                 box,
 	}
 
-	if s.options.EtcdApiVersion == 3 {
-		ng, err = etcdv3ng.New(
-			s.options.EtcdNodes,
-			s.options.EtcdKey,
-			s.registry,
-			options)
-	} else {
-		ng, err = etcdv2ng.New(
-			s.options.EtcdNodes,
-			s.options.EtcdKey,
-			s.registry,
-			options)
+	switch s.options.Engine {
+	case "etcd":
+		if s.options.EtcdApiVersion == 3 {
+			ng, err = etcdv3ng.New(
+				s.options.EtcdNodes,
+				s.options.EtcdKey,
+				s.registry,
+				options)
+		} else {
+			ng, err = etcdv2ng.New(
+				s.options.EtcdNodes,
+				s.options.EtcdKey,
+				s.registry,
+				options)
+		}
+	case "memng":
+		ng = memng.New(registry.GetRegistry())
+	default:
+		err = fmt.Errorf("Unsupported engine %q, supported engines: etcd, memng", s.options.Engine)
 	}
 	if err != nil {
 		return err
@@ -414,15 +423,15 @@ func (s *Service) newProxy(id int) (proxy.Proxy, error) {
 	}
 
 	return builder.NewProxy(id, s.stapler, proxy.Options{
-		MetricsClient:      s.metricsClient,
-		DialTimeout:        s.options.EndpointDialTimeout,
-		ReadTimeout:        s.options.ServerReadTimeout,
-		WriteTimeout:       s.options.ServerWriteTimeout,
-		MaxHeaderBytes:     s.options.ServerMaxHeaderBytes,
-		DefaultListener:    constructDefaultListener(s.options),
-		TrustForwardHeader: s.options.TrustForwardHeader,
-		NotFoundMiddleware: s.registry.GetNotFoundMiddleware(),
-		Router:             s.registry.GetRouter(),
+		MetricsClient:             s.metricsClient,
+		DialTimeout:               s.options.EndpointDialTimeout,
+		ReadTimeout:               s.options.ServerReadTimeout,
+		WriteTimeout:              s.options.ServerWriteTimeout,
+		MaxHeaderBytes:            s.options.ServerMaxHeaderBytes,
+		DefaultListener:           constructDefaultListener(s.options),
+		TrustForwardHeader:        s.options.TrustForwardHeader,
+		NotFoundMiddleware:        s.registry.GetNotFoundMiddleware(),
+		Router:                    s.registry.GetRouter(),
 		IncomingConnectionTracker: s.registry.GetIncomingConnectionTracker(),
 		FrontendListeners:         s.registry.GetFrontendListeners(),
 		CacheProvider:             cacheProvider,

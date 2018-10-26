@@ -1,0 +1,9 @@
+FROM scratch
+EXPOSE 8181 8182
+COPY build-output/vulcand /app/vulcand
+COPY build-output/vctl /app/vctl
+COPY build-output/vbundle /app/vbundle
+ENV PATH=/app:$PATH
+
+ENTRYPOINT ["vulcand"]
+CMD ["-engine=memng"]

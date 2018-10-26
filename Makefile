@@ -6,6 +6,7 @@ SEAL_KEY := 1b727a055500edd9ab826840ce9428dc8bace1c04addc67bbac6b096e25ede4b
 
 ETCD_FLAGS := VULCAND_TEST_ETCD_NODES=${ETCD_NODES} VULCAND_TEST_ETCD_USER=root VULCAND_TEST_ETCD_PASS=rootpw VULCAND_TEST_ETCD_TLS=true
 VULCAN_FLAGS := ${ETCD_FLAGS} VULCAND_TEST_ETCD_PREFIX=${PREFIX} VULCAND_TEST_API_URL=${API_URL} VULCAND_TEST_SERVICE_URL=${SERVICE_URL} VULCAND_TEST_SEAL_KEY=${SEAL_KEY}
+MEMNG_DOCKER_IMAGE := igorsechyn/sp-vulcand:latest
 
 test: clean
 	go test -v ./... -cover
@@ -18,6 +19,7 @@ test-with-vulcan: clean
 
 clean:
 	find . -name flymake_* -delete
+	rm -rf build-output
 
 test-package: clean
 	go test -v ./$(p)
@@ -77,6 +79,15 @@ docker-build:
 	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./vctl/vctl ./vctl
 	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./vbundle/vbundle ./vbundle
 	docker build -t mailgun/vulcand:latest -f ./Dockerfile-scratch .
+
+docker-build-memng: clean
+	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./build-output/vulcand .
+	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./build-output/vctl ./vctl
+	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./build-output/vbundle ./vbundle
+	docker build -t ${MEMNG_DOCKER_IMAGE} -f ./Dockerfile-memng .
+
+docker-publish-memng: docker-build-memng
+	docker push ${MEMNG_DOCKER_IMAGE}
 
 docker-minimal-linux:
 	bash scripts/build-minimal-linux.sh ${SEAL_KEY}
