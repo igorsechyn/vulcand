@@ -78,12 +78,6 @@ docker-build:
 	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./vbundle/vbundle ./vbundle
 	docker build -t mailgun/vulcand:latest -f ./Dockerfile-scratch .
 
-docker-build-sp:
-	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./vulcand .
-	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./vctl/vctl ./vctl
-	GOOS=linux go build -a -tags netgo -installsuffix cgo -ldflags '-w' -o ./vbundle/vbundle ./vbundle
-	docker build -t docker.atl-paas.net/atlassian/vulcand:latest -f ./Dockerfile-scratch .
-
 docker-minimal-linux:
 	bash scripts/build-minimal-linux.sh ${SEAL_KEY}
 
